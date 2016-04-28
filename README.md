@@ -1,5 +1,7 @@
 [![Deploy](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
 
+A version of the React Tutorial (completed) without the jQuery dependency and using a promise factory for all AJAX requests
+
 # React Tutorial
 
 This is the React comment box example from [the React tutorial](http://facebook.github.io/react/docs/tutorial.html).
