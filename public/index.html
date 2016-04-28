@@ -18,13 +18,17 @@
       // To get started with this tutorial running your own code, simply remove
       // the script tag loading scripts/example.js and start writing code here.
       var CommentBox = React.createClass({
+        // promise factory to generate async HTTP requests.
+        // replaces functionality previously provided by jQuery
         ajax: function(method, url, exType, args) {
           console.log(args);
           var promise = new Promise(function(resolve,reject){
             var uri = url;
             var client = new XMLHttpRequest();
             client.open(method, uri);
+            // set expected data type
             client.responseType = exType;
+            // handle request payload for POST and PUT methods
             if (args && (method === 'POST' || method === 'PUT')) {
               var payload = '';
               var argcount = 0;
@@ -41,6 +45,7 @@
             } else {
               client.send();
             }
+            // handle HTTP response
             client.onload = function () {
               if (this.status >= 200 && this.status < 300) {
                 // Performs the function "resolve" when this.status is equal to 2xx
