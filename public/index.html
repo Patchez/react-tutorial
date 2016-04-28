@@ -8,15 +8,178 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.0.1/react.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.0.1/react-dom.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.6.16/browser.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script> -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/0.3.5/marked.min.js"></script>
   </head>
   <body>
     <div id="content"></div>
-    <script type="text/babel" src="scripts/example.js"></script>
+    <!-- <script type="text/babel" src="scripts/example.js"></script> -->
     <script type="text/babel">
       // To get started with this tutorial running your own code, simply remove
       // the script tag loading scripts/example.js and start writing code here.
+      var CommentBox = React.createClass({
+        ajax: function(method, url, exType, args) {
+          console.log(args);
+          var promise = new Promise(function(resolve,reject){
+            var uri = url;
+            var client = new XMLHttpRequest();
+            client.open(method, uri);
+            client.responseType = exType;
+            if (args && (method === 'POST' || method === 'PUT')) {
+              var payload = '';
+              var argcount = 0;
+              for (var key in args) {
+                if (args.hasOwnProperty(key)) {
+                  if (argcount++) {
+                    payload += '&';
+                  }
+                  payload += encodeURIComponent(key) + '=' + encodeURIComponent(args[key]);
+                }
+              }
+              client.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+              client.send(payload);
+            } else {
+              client.send();
+            }
+            client.onload = function () {
+              if (this.status >= 200 && this.status < 300) {
+                // Performs the function "resolve" when this.status is equal to 2xx
+                resolve(this.response);
+              } else {
+                // Performs the function "reject" when this.status is different than 2xx
+                reject(this.statusText);
+              }
+            };
+            client.onerror = function () {
+              reject(client.statusText);
+            };
+          });
+          return promise
+        },
+        getInitialState: function() {
+          return {data: []};
+        },
+        loadCommentsFromServer: function() {
+          this.ajax('GET', this.props.url, 'json').then(function(data){
+            this.setState({data: data});
+          }.bind(this)).catch(function(data){
+            console.error(data);
+          }.bind(this));
+        },
+        handleCommentSubmit: function(comment) {
+          var comments = this.state.data;
+          comment.id = Date.now();
+          var newComments = comments.concat([comment]);
+          this.setState({data: newComments})
+          this.ajax('POST', this.props.url, 'json', comment).then(function(data){
+            this.setState({data: data});
+          }.bind(this)).catch(function(data){
+            this.setState({data: comments});
+          }.bind(this))
+        },
+        componentDidMount: function() {
+          this.loadCommentsFromServer();
+          setInterval(this.loadCommentsFromServer, this.props.pollInterval)
+        },
+        render: function() {
+          return (
+            <div className="commentBox">
+              <h1>Comments</h1>
+              <CommentList data={this.state.data} />
+              <CommentForm onCommentSubmit={this.handleCommentSubmit} />
+            </div>
+          );
+        }
+      });
+
+      var CommentList = React.createClass({
+        render: function() {
+          var commentNodes = this.props.data.map(function(comment) {
+            return (
+              <Comment author={comment.author} key={comment.id}>
+                {comment.text}
+              </Comment>
+            )
+          });
+          return (
+            <div classname="commentList">
+              {commentNodes}
+            </div>
+          )
+        }
+      });
+
+      var CommentForm = React.createClass({
+        getInitialState: function() {
+          return {author: '', text: ''};
+        },
+        handleAuthorChange: function(e) {
+          this.setState({author: e.target.value});
+        },
+        handleTextChange: function(e) {
+          this.setState({text: e.target.value});
+        },
+        handleSubmit: function(e) {
+          e.preventDefault();
+          console.log(e);
+          var author = this.state.author.trim();
+          console.log(author);
+          var text = this.state.text.trim();
+          console.log(text);
+          if (!text || !author) {
+            return;
+          }
+          this.props.onCommentSubmit({author: author, text: text});
+          this.setState({author: '', text: ''});
+        },
+        render: function() {
+          return (
+            <form className="commentForm" onSubmit={this.handleSubmit}>
+              <input
+                type="text"
+                placeholder="Your name"
+                value={this.state.author}
+                onChange={this.handleAuthorChange}
+              />
+              <input
+                type="text"
+                placeholder="Say something..."
+                value={this.state.text}
+                onChange={this.handleTextChange}
+              />
+              <input type="submit" value="Post" />
+            </form>
+          );
+        }
+      });
+
+      var Comment = React.createClass({
+        rawMarkup: function() {
+          var rawMarkup = marked(this.props.children.toString(), {sanitize: true});
+          return { __html: rawMarkup };
+        },
+        render: function() {
+          return (
+            <div className="comment">
+              <h2 className="commentAuthor">
+                {this.props.author}
+              </h2>
+              <span dangerouslySetInnerHTML={this.rawMarkup()} />
+            </div>
+          );
+        }
+      });
+
+      var data = [
+        {id: 1, author: "Pete Hunt", text: "This is one comment"},
+        {id: 2, author: "Jordan Wake", text: "This is *another* comment"}
+      ];
+
+      ReactDOM.render(
+        <CommentBox url="/api/comments" pollInterval={2000} />,
+        document.getElementById('content')
+      );
+
     </script>
   </body>
 </html>
